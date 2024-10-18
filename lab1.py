@@ -1,88 +1,93 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from cmaes import CMA, CMAwM
+import random
 
-def f(x, y):
-    numerator = np.cos(np.sin(np.abs(x**2 - y**2)))**2 - 0.5
-    denominator = (1 + 0.001 * (x**2 + y**2))**2
-    return 0.5 + numerator / denominator
+# Objective function to optimize: DECIDIR SI MINIMITZAR O MAXIMITZAR
+def objective_function(x):
+    return x ** 2
 
-def ellipsoid_onemax(x, n_zdim):
-    n = len(x)
-    n_rdim = n - n_zdim
-    r = 10
-    if len(x) < 2:
-        raise ValueError("dimension must be greater one")
-    ellipsoid = sum([(1000 ** (i / (n_rdim - 1)) * x[i]) ** 2 for i in range(n_rdim)])
-    onemax = n_zdim - (0.0 < x[(n - n_zdim) :]).sum()
-    return ellipsoid + r * onemax
+# Function to decode a binary chromosome into a real value within the given range
+def decode_chromosome(chromosome, min_x, max_x, bits=10):
+    integer_value = int(chromosome, 2)
+    return min_x + (max_x - min_x) * integer_value / (2**bits - 1)
 
-def plot():
-    x = np.linspace(-10, 10, 200)
-    y = np.linspace(-10, 10, 200)
-    X, Y = np.meshgrid(x, y)
-    Z = f(X, Y)
+# Function to create a random chromosome (binary string of length 'bits')
+def create_chromosome(bits=10):
+    return ''.join(random.choice('01') for _ in range(bits))
 
-    # Grafica la función en 3D
-    fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
-    ax.plot_surface(X, Y, Z, cmap='viridis', edgecolor='none')
+# Tournament selection function
+def tournament_selection(population, k=3):
+    selected = random.sample(population, k)
+    return min(selected, key=lambda ind: ind['fitness'])
 
-    # Etiquetas
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('f(X, Y)')
-    ax.set_title('3D Visualization of the function f(x, y)')
+# One-point crossover function --> LA PODEM CANVIAR PER TWO-POINTS CROSSOVER TAMBÉ (o més, el que volguem)
+def crossover(parent1, parent2, crossover_rate=0.9):
+    if random.random() < crossover_rate:
+        point = random.randint(1, len(parent1) - 1)
+        return parent1[:point] + parent2[point:]
+    return parent1
 
-    plt.show()
+# Bitwise mutation function
+def mutate(chromosome, mutation_rate=0.01):
+    mutated = ''
+    for bit in chromosome:
+        if random.random() < mutation_rate:
+            mutated += '1' if bit == '0' else '0'
+        else:
+            mutated += bit
+    return mutated
 
-
-# real solutions:
-# f(0, 1.25313) = 0.292579)
-# f(0, -1.25313) = 0.292579)
-# f(1.25313, 0) = 0.292579)
-# f(-1.25313, 0) = 0.292579)
-def main1():
-    optimizer = CMA(mean=np.zeros(2), sigma=1.3, population_size=20, lr_adapt=True)
-
-    for generation in range(100):
-        solutions = []
-        for _ in range(optimizer.population_size):
-            x = optimizer.ask()
-            value = f(x[0], x[1])
-            solutions.append((x, value))
-            print(f"#{generation} {value} (x1={x[0]}, x2 = {x[1]})")
-        optimizer.tell(solutions)
-
-def main2():
-    binary_dim, continuous_dim = 10, 10
-    dim = binary_dim + continuous_dim
-    bounds = np.concatenate(
-        [
-            np.tile([-np.inf, np.inf], (continuous_dim, 1)),
-            np.tile([0, 1], (binary_dim, 1)),
-        ]
-    )
-    steps = np.concatenate([np.zeros(continuous_dim), np.ones(binary_dim)])
-    optimizer = CMAwM(mean=np.zeros(dim), sigma=2.0, bounds=bounds, steps=steps)
-    print(" evals    f(x)")
-    print("======  ==========")
-
-    evals = 0
-    while True:
-        solutions = []
-        for _ in range(optimizer.population_size):
-            x_for_eval, x_for_tell = optimizer.ask()
-            value = f(x_for_eval, binary_dim)
-            evals += 1
-            solutions.append((x_for_tell, value))
-            if evals % 300 == 0:
-                print(f"{evals:5d}  {value:10.5f}")
-        optimizer.tell(solutions)
-
-        if optimizer.should_stop():
-            break
+# Function to evaluate the fitness of a population
+def evaluate_population(population, min_x, max_x):
+    for individual in population:
+        individual['x'] = decode_chromosome(individual['chromosome'], min_x, max_x)
+        individual['fitness'] = objective_function(individual['x'])
 
 
-if __name__ == "__main__":
-    main2()
+###################################### MAIN PROGRAM  ######################################
+        
+# GA parameters
+population_size = 10
+generations = 50
+crossover_rate = 0.9
+mutation_rate = 0.01
+bits = 10  # Chromosome length
+min_x = -10  # Lower bound of the search space
+max_x = 10   # Upper bound of the search space
+
+# STEP 1. Initialize the random population (list of dictionaries)
+population = [{'chromosome': create_chromosome(bits)} for _ in range(population_size)]
+
+# STEP 2. Evaluate the initial population
+evaluate_population(population, min_x, max_x)
+
+# Genetic Algorithm
+for generation in range(generations):
+    new_population = []
+
+    # Create the new population
+    while len(new_population) < population_size:
+        # Tournament selection to choose chromosomes to reproduce
+        parent1 = tournament_selection(population)['chromosome']
+        parent2 = tournament_selection(population)['chromosome']
+
+        # Crossover
+        offspring = crossover(parent1, parent2, crossover_rate)
+
+        # Mutation
+        offspring = mutate(offspring, mutation_rate)
+
+        # Add the offspring to the new population
+        new_population.append({'chromosome': offspring})
+
+    # Replace the old population with the new one
+    population = new_population
+
+    # Evaluate the new population
+    evaluate_population(population, min_x, max_x)
+
+    # Find the best individual of the current generation
+    best_individual = min(population, key=lambda ind: ind['fitness']) # ho podem canviar a maximitzar
+    print(f"Generation {generation + 1}: Best x = {best_individual['x']:.5f}, f(x) = {best_individual['fitness']:.5f}")
+
+# Best solution found
+best_individual = min(population, key=lambda ind: ind['fitness']) # ho podem canviar a maximitzar
+print(f"\nBest solution: x = {best_individual['x']:.5f}, f(x) = {best_individual['fitness']:.5f}")
