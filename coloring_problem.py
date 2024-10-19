@@ -31,6 +31,23 @@ def create_adjacent_matrix():
 
     return matriz_adyacencia, comarcas
 
+def create_adjacent_matrix2(df):
+    # Get the number of comarques
+    nodes = len(df)
+
+    # Initialize an empty adjacency matrix as a NumPy array
+    adjacency_matrix = np.zeros((nodes, nodes), dtype=int)
+
+    # Loop through each pair of comarques to check for adjacency
+    for i in range(nodes):
+        for j in range(nodes):
+            if i != j:  # Don't check the same comarca
+                # Check if the geometries intersect
+                if df.geometry[i].intersects(df.geometry[j]):
+                    adjacency_matrix[i, j] = 1  # Set adjacency if they touch
+
+    return adjacency_matrix
+
 def fitness_function(matrix, individuals):
     num_individus, num_nodes = np.array(individuals).shape # Número de nodos
     penalty = np.zeros(num_individus, dtype=int)
@@ -93,7 +110,7 @@ def mutation(individuals, prob_mutation, num_colors):
 def obtain_colors(matriu):
 
     # Crear inidvidus Initial population
-    p = 20
+    p = 100
     k = max(np.sum(matriu, axis=0)) # colors = 5
     nodes_graf = matriu.shape[0]
 
@@ -112,7 +129,7 @@ def obtain_colors(matriu):
         penalty = fitness_function(matriu, population)
         prob_mutation=0.6
 
-        while np.min(penalty) > 0 and generations < 100:
+        while np.min(penalty) > 0 and generations < 200:
 
             # Shuffle individuals
             random.shuffle(population)
@@ -135,6 +152,8 @@ def obtain_colors(matriu):
             penalty = fitness_function(matriu, population)
 
             generations += 1
+            if generations % 100 == 0:
+                print(num_colors, generations)
 
         if np.min(penalty) == 0:
             num_colors -= 1
