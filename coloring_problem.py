@@ -32,49 +32,33 @@ def create_adjacent_matrix():
     return matriz_adyacencia, comarcas
 
 def create_adjacent_matrix2(df):
-    # Get the number of comarques
     nodes = len(df)
-
-    # Initialize an empty adjacency matrix as a NumPy array
     adjacency_matrix = np.zeros((nodes, nodes), dtype=int)
 
-    # Loop through each pair of comarques to check for adjacency
+    # Vectorized intersection checks using GeoPandas/NumPy
     for i in range(nodes):
-        for j in range(nodes):
-            if i != j:  # Don't check the same comarca
-                # Check if the geometries intersect
-                if df.geometry[i].intersects(df.geometry[j]):
-                    adjacency_matrix[i, j] = 1  # Set adjacency if they touch
+        adjacency_matrix[i] = df.geometry.intersects(df.geometry[i]).astype(int)
+        adjacency_matrix[i, i] = 0  # Remove self-adjacency
 
     return adjacency_matrix
 
 def fitness_function(matrix, individuals):
-    num_individus, num_nodes = np.array(individuals).shape # Número de nodos
-    penalty = np.zeros(num_individus, dtype=int)
-    for k, individual in enumerate(individuals):
-        # Recorrer la matriz de adyacencia para detectar los conflictos
-        for i in range(num_nodes):
-            for j in range(i + 1, num_nodes):  # j empieza desde i+1 para evitar contar dos veces el mismo par
-                if matrix[i][j] == 1:  # Si i y j son adyacentes
-                    if individual[i] == individual[j]:  # Si tienen el mismo color
-                        penalty[k] += 1  # Sumar 1 a la penalización por conflicto de color
-    
-    return penalty # vector
+    # Directly sum conflicts for adjacent nodes
+    penalty = np.zeros(len(individuals), dtype=int)
+    for idx, individual in enumerate(individuals):
+        adjacency_conflicts = matrix * (individual == individual[:, None])
+        penalty[idx] = np.sum(adjacency_conflicts) // 2  # Divide by 2 to avoid double counting
+    return penalty
 
 
 # One-point crossover function --> LA PODEM CANVIAR PER TWO-POINTS CROSSOVER TAMBÉ (o més, el que vulguem)
 def crossover(parent1, parent2):
+    # Simplified crossover with slicing
     n = len(parent1)
-    position = random.randint(2, n-2) 
-    child1 = [] 
-    child2 = [] 
-    for i in range(position+1): 
-        child1.append(parent1[i]) 
-        child2.append(parent2[i]) 
-    for i in range(position+1, n): 
-        child1.append(parent2[i]) 
-        child2.append(parent1[i]) 
-    return child1, child2 
+    position = random.randint(2, n-2)
+    child1 = np.concatenate((parent1[:position+1], parent2[position+1:]))
+    child2 = np.concatenate((parent2[:position+1], parent1[position+1:]))
+    return child1, child2
 
 
 # Tournament selection function
@@ -160,6 +144,7 @@ def obtain_colors(matriu):
             best_palette = population[np.argmin(penalty)]
         else:
             break
+        print(num_colors)
         
     return best_palette
 
