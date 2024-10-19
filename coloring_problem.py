@@ -29,10 +29,10 @@ def create_adjacent_matrix():
             matriz_adyacencia[i][j] = 1
             matriz_adyacencia[j][i] = 1  # Porque es un grafo no dirigido
 
-    return matriz_adyacencia
+    return matriz_adyacencia, comarcas
 
 def fitness_function(matrix, individuals):
-    num_individus, num_nodes = individuals.shape # Número de nodos
+    num_individus, num_nodes = np.array(individuals).shape # Número de nodos
     penalty = np.zeros(num_individus, dtype=int)
     for k, individual in enumerate(individuals):
         # Recorrer la matriz de adyacencia para detectar los conflictos
@@ -90,45 +90,59 @@ def mutation(individuals, prob_mutation, num_colors):
 
 ###################################### MAIN PROGRAM  ######################################
 
-matriu = create_adjacent_matrix()
-print(matriu)
+def obtain_colors(matriu):
 
-# Crear inidvidus Initial population
-p = 20
-nodes_graf = 7
-k = max(np.sum(matriu, axis=0)) # colors = 5
+    # Crear inidvidus Initial population
+    p = 20
+    k = max(np.sum(matriu, axis=0)) # colors = 5
+    nodes_graf = matriu.shape[0]
 
-individuals = np.random.randint(k, size=(p,nodes_graf))
-print(individuals)
+    num_colors = k
+
+    best_palette = 0
+
+        # fer un bucle per anar reduint el numero de colors
+    while num_colors > 0:
+
+        population = np.random.randint(num_colors, size=(p,nodes_graf))
+
+        # ALGORITME GA
+        generations = 0
+        # Evaluate individuals
+        penalty = fitness_function(matriu, population)
+        prob_mutation=0.6
+
+        while np.min(penalty) > 0 and generations < 100:
+
+            # Shuffle individuals
+            random.shuffle(population)
+
+            # Triar els que es reproduiran - tournament selection
+            individuals_to_reproduce = tournament_selection(population, matriu)
+
+            # Crossover individuals_to_reproduce to obtain the offspring
+            new_population = []
+            for i in range(0, len(individuals_to_reproduce)-1, 2):
+                child1, child2 = crossover(individuals_to_reproduce[i], individuals_to_reproduce[i+1])
+                new_population.extend([child1, child2])
+
+            # Ja tenim la nova population
+            # Ara fem Mutation
+            new_population = mutation(new_population, prob_mutation, num_colors)
 
 
-# ALGORITME GA
-generations = 0
-# Evaluate individuals
-penalty = fitness_function(matriu, individuals)
-print(penalty)
-prob_mutation=0.6
-num_colors = nodes_graf - 1
+            population = new_population
+            penalty = fitness_function(matriu, population)
 
-# fer un bucle per anar reduint el numero de colors
-while np.min(penalty) > 0 and generations < 1:
+            generations += 1
 
-    # Shuffle individuals
-    random.shuffle(individuals)
+        if np.min(penalty) == 0:
+            num_colors -= 1
+            best_palette = population[np.argmin(penalty)]
+        else:
+            break
+        
+    return best_palette
 
-    # Triar els que es reproduiran - tournament selection
-    individuals_to_reproduce = tournament_selection(individuals, matriu)
 
-    # Crossover individuals_to_reproduce to obtain the offspring
-    new_population = []
-    for i in range(0, len(individuals_to_reproduce)-1, 2):
-        child1, child2 = crossover(individuals_to_reproduce[i], individuals_to_reproduce[i+1])
-        new_population.extend([child1, child2])
-
-    print(new_population)
-
-    # Ja tenim la nova population
-    # Ara fem Mutation
-    individuals_mutated = mutation(individuals, prob_mutation, num_colors)
-    print(individuals_mutated)
 
