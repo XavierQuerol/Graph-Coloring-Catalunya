@@ -14,11 +14,11 @@ def create_chromosome(bits=10):
     return ''.join(random.choice('01') for _ in range(bits))
 
 # Tournament selection function
-def tournament_selection(population, k=3):
+def tournament_selection(population, k=3): # podem canviar la k
     selected = random.sample(population, k)
     return min(selected, key=lambda ind: ind['fitness'])
 
-# One-point crossover function --> LA PODEM CANVIAR PER TWO-POINTS CROSSOVER TAMBÉ (o més, el que volguem)
+# One-point crossover function --> LA PODEM CANVIAR PER TWO-POINTS CROSSOVER TAMBÉ (o més, el que vulguem)
 def crossover(parent1, parent2, crossover_rate=0.9):
     if random.random() < crossover_rate:
         point = random.randint(1, len(parent1) - 1)
@@ -50,6 +50,7 @@ generations = 50
 crossover_rate = 0.9
 mutation_rate = 0.01
 bits = 10  # Chromosome length
+# EL SEARCH SPACE HA DE SER UN HIPERCUB DE DIMENSIÓ N
 min_x = -10  # Lower bound of the search space
 max_x = 10   # Upper bound of the search space
 
@@ -60,7 +61,7 @@ population = [{'chromosome': create_chromosome(bits)} for _ in range(population_
 evaluate_population(population, min_x, max_x)
 
 # Genetic Algorithm
-for generation in range(generations):
+for generation in range(generations): # TRIAR EL STOPPING CRITERIA
     new_population = []
 
     # Create the new population
