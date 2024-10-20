@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import random
 import time
 
@@ -18,13 +19,12 @@ def create_adjacent_matrix(df):
 
 
 # Define the fitness function to compute the penalty
-def fitness_function(matrix, individuals, fitness_call_counter):
+def fitness_function(matrix, individuals):
     # Directly sum conflicts for adjacent nodes
     penalty = np.zeros(len(individuals), dtype=int)
     for idx, individual in enumerate(individuals):
         adjacency_conflicts = matrix * (individual == individual[:, None])
         penalty[idx] = np.sum(adjacency_conflicts) // 2  # Divide by 2 to avoid double counting
-    fitness_call_counter[0] += len(individuals)  # Count fitness calls
     return penalty
 
 
@@ -61,9 +61,19 @@ def uniform_crossover(parent1, parent2, crossover_prob=0.5):
 
     return child1, child2
 
+def crossover(crossover_type, parent1, parent2, prob):
+    if crossover_type == 'uniform':
+        child1, child2 = uniform_crossover(parent1, parent2, prob)
+    elif crossover_type == 'one-point':
+        child1, child2 = one_point_crossover(parent1, parent2)
+    elif crossover_type == 'two-point':
+        child1, child2 = two_point_crossover(parent1, parent2)
+    return child1, child2
+
+
 
 # Tournament selection function
-def tournament_selection(population, matrix, fitness_call_counter, tournament_size=2):
+def tournament_selection(population, matrix, tournament_size=2):
     new_population = []
     for _ in range(tournament_size):
         random.shuffle(population)
@@ -72,7 +82,7 @@ def tournament_selection(population, matrix, fitness_call_counter, tournament_si
             ind2 = population[i+1]
             inds_to_compete = np.array([ind1, ind2])
 
-            fitness_vector = fitness_function(matrix, inds_to_compete, fitness_call_counter)
+            fitness_vector = fitness_function(matrix, inds_to_compete)
             best_ind = inds_to_compete[np.argmin(fitness_vector)]
             new_population.append(best_ind)
 
@@ -88,19 +98,35 @@ def mutation(individuals, prob_mutation, num_colors):
 
     return individuals
 
+def get_results(results, penalty, num_colors, generations, fitness_evaluations):
+    mean_penalty = np.sum(penalty) / len(penalty)
+    min_penalty = np.min(penalty)
+
+    sorted_penalty = np.sort(penalty)
+    n_low_5_percent = int(0.20 * len(penalty))
+    lowest_5_percent_values = sorted_penalty[:n_low_5_percent]
+    mean_low_5_percent = np.mean(lowest_5_percent_values)
+
+    new_row = {'Mean Penalty': mean_penalty, 'Min Penalty':min_penalty, 'Low 20% penalty': mean_low_5_percent, 
+               'Generation': generations, 'Number colors': num_colors, 'Fitness evaluations': fitness_evaluations}
+    results = results._append(new_row, ignore_index = True)
+    return results
+
 
 ###################################### MAIN PROGRAM  ######################################
 
-def obtain_colours(matrix):
-    population_size = 100
+def obtain_colours(matrix, population_size = 100, prob_mutation = 0.2, max_generations = 200,
+                   crossover_type = 'uniform', crossover_prob = 0.5):
     num_colors = max(np.sum(matrix, axis=0))
     nodes_graph = matrix.shape[0]
     best_palette = None
-    prob_mutation = 0.2
-    max_generations = 200
-    fitness_call_counter = [0]  # A list to count fitness function calls (mutable object)
+    results = pd.DataFrame()
 
     start_time = time.time()
+
+    total_generations = 0
+    fitness_evaluations = 0
+
 
     while num_colors > 0:
         # Initialize the population
@@ -108,27 +134,31 @@ def obtain_colours(matrix):
         generations = 0
 
         # Evaluate individuals
-        penalty = fitness_function(matrix, population, fitness_call_counter)
+        penalty = fitness_function(matrix, population)
 
         while np.min(penalty) > 0 and generations < max_generations:
 
             # Tournament selection to choose the individuals for reproduction
-            individuals_to_reproduce = tournament_selection(population, matrix, fitness_call_counter)
+            individuals_to_reproduce = tournament_selection(population, matrix)
 
             # Crossover individuals to obtain the offspring
             new_population = []
             for i in range(0, len(individuals_to_reproduce)-1, 2):
-                child1, child2 = uniform_crossover(individuals_to_reproduce[i], individuals_to_reproduce[i+1])
+                child1, child2 = crossover(crossover_type, individuals_to_reproduce[i], individuals_to_reproduce[i+1], crossover_prob)
                 new_population.extend([child1, child2])
 
             # Apply Mutation to the new population
-            new_population = mutation(new_population, prob_mutation, num_colors)
+            new_population = mutation(new_population, prob_mutation, num_colors,)
             population = new_population
 
             # Evaluate the new population
-            penalty = fitness_function(matrix, population, fitness_call_counter)
+            penalty = fitness_function(matrix, population)
+
+            results = get_results(results, penalty, num_colors, total_generations, fitness_evaluations)
 
             generations += 1
+            total_generations += 1
+            fitness_evaluations += len(penalty)
             
         # If a valid solution is found, reduce the number of colors
         if np.min(penalty) == 0:
@@ -143,14 +173,14 @@ def obtain_colours(matrix):
     execution_time = time.time() - start_time
 
     # Information for the report
-    report_data = {
+    """report_data = {
         'num_colors': len(np.unique(best_palette)) if best_palette is not None else None,
         'generations': generations,
         'fitness_calls': fitness_call_counter[0],
         'execution_time': execution_time
-    }
+    }"""
         
-    return best_palette, report_data
+    return best_palette, results, execution_time
 
 
 
