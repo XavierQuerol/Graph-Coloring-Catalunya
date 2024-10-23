@@ -154,11 +154,13 @@ def obtain_colours(matrix, population_size = 100, prob_mutation = 0.2, max_gener
             # Evaluate the new population
             penalty = fitness_function(matrix, population)
 
+            fitness_evaluations += len(penalty)
+
             results = get_results(results, penalty, num_colors, total_generations, fitness_evaluations)
 
             generations += 1
             total_generations += 1
-            fitness_evaluations += len(penalty)
+            
             
         # If a valid solution is found, reduce the number of colors
         if np.min(penalty) == 0:
