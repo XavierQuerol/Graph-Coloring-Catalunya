@@ -5,19 +5,6 @@ import time
 
 ############# GENETIC ALGORITHM FUNCTIONS #############
 
-# Create adjacent matrix of the map
-def create_adjacent_matrix(df):
-    nodes = len(df)
-    adjacency_matrix = np.zeros((nodes, nodes), dtype=int)
-
-    # Vectorized intersection checks using GeoPandas/NumPy
-    for i in range(nodes):
-        adjacency_matrix[i] = df.geometry.intersects(df.geometry[i]).astype(int)
-        adjacency_matrix[i, i] = 0  # Remove self-adjacency
-
-    return adjacency_matrix
-
-
 # Define the fitness function to compute the penalty
 def fitness_function(matrix, individuals):
     # Directly sum conflicts for adjacent nodes
