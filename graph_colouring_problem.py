@@ -111,7 +111,7 @@ def get_results(results, population_dict, num_colors, generations, fitness_evalu
 ###################################### MAIN PROGRAM  ######################################
 
 def obtain_colours(matrix, population_size = 100, prob_mutation = 0.2, max_generations = 200,
-                   crossover_type = 'uniform', crossover_prob = 0.5, elitism_size = 5):
+                   crossover_type = 'uniform', crossover_prob = 0.5):
     num_colors = max(np.sum(matrix, axis=0))
     nodes_graph = matrix.shape[0]
     best_palette = None
@@ -159,21 +159,10 @@ def obtain_colours(matrix, population_size = 100, prob_mutation = 0.2, max_gener
                 for individual, penalty_value in zip(new_population, penalty)
             ]
 
-            # Apply elitism: Preserve the best 'elitism_size' individuals
-            sorted_population_dict = sorted(population_dict, key=lambda x: x['penalty'])
-            best_individuals = sorted_population_dict[:elitism_size]
-
-            # Add the best individuals back into the new population
-            new_population_dict = best_individuals + new_population_dict
-
             # Update the population
             population_dict = new_population_dict
 
-            # Shuffle the population
-            random.shuffle(population_dict)
-
             fitness_evaluations += len(population_dict)
-
             results = get_results(results, population_dict, num_colors, total_generations, fitness_evaluations)
 
             generations += 1
