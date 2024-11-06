@@ -32,6 +32,7 @@ def two_point_crossover(parent1, parent2):
     child2 = np.concatenate((parent2[:point1], parent1[point1:point2], parent2[point2:]))
     return child1, child2
 
+
 # Uniform crossover function
 def uniform_crossover(parent1, parent2, crossover_prob=0.5):
     n = len(parent1)
@@ -48,6 +49,7 @@ def uniform_crossover(parent1, parent2, crossover_prob=0.5):
 
     return child1, child2
 
+
 def crossover(crossover_type, parent1, parent2, prob):
     if crossover_type == 'uniform':
         child1, child2 = uniform_crossover(parent1, parent2, prob)
@@ -58,6 +60,7 @@ def crossover(crossover_type, parent1, parent2, prob):
     return child1, child2
 
 
+# Tournament selection function
 def tournament_selection(population_dict, tournament_size=2):
     selected_population_dict = []
     for _ in range(tournament_size):
@@ -80,6 +83,7 @@ def mutation(individuals, prob_mutation, num_colors):
             individual[position] = random.randint(1, num_colors)
 
     return individuals
+
 
 def get_results(results, population_dict, num_colors, generations, fitness_evaluations):
     penalties = [ind['penalty'] for ind in population_dict]  # Accedemos directamente a la lista
@@ -107,7 +111,7 @@ def get_results(results, population_dict, num_colors, generations, fitness_evalu
 ###################################### MAIN PROGRAM  ######################################
 
 def obtain_colours(matrix, population_size = 100, prob_mutation = 0.2, max_generations = 200,
-                   crossover_type = 'uniform', crossover_prob = 0.5):
+                   crossover_type = 'uniform', crossover_prob = 0.5, elitism_size = 5):
     num_colors = max(np.sum(matrix, axis=0))
     nodes_graph = matrix.shape[0]
     best_palette = None
@@ -118,11 +122,11 @@ def obtain_colours(matrix, population_size = 100, prob_mutation = 0.2, max_gener
     total_generations = 0
     fitness_evaluations = 0
 
-
     while num_colors > 0:
+        generations = 0
+
         # Initialize the population
         population = np.random.randint(num_colors, size=(population_size, nodes_graph))
-        generations = 0
         
         # Evaluate individuals
         penalty = fitness_function(matrix, population)
@@ -155,8 +159,18 @@ def obtain_colours(matrix, population_size = 100, prob_mutation = 0.2, max_gener
                 for individual, penalty_value in zip(new_population, penalty)
             ]
 
-            # Actualizar la población
+            # Apply elitism: Preserve the best 'elitism_size' individuals
+            sorted_population_dict = sorted(population_dict, key=lambda x: x['penalty'])
+            best_individuals = sorted_population_dict[:elitism_size]
+
+            # Add the best individuals back into the new population
+            new_population_dict = best_individuals + new_population_dict
+
+            # Update the population
             population_dict = new_population_dict
+
+            # Shuffle the population
+            random.shuffle(population_dict)
 
             fitness_evaluations += len(population_dict)
 
