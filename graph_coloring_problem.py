@@ -180,7 +180,7 @@ def obtain_colours(matrix, population_size = 300, prob_mutation = 0.1, max_gener
 
     execution_time = time.time() - start_time
         
-    return best_palette, results, results2, execution_time
+    return best_palette, results.iloc[-1], results2, execution_time
 
 
 
