@@ -119,6 +119,7 @@ def obtain_colours(matrix, population_size = 300, prob_mutation = 0.1, max_gener
     results2 = pd.DataFrame()
 
     start_time = time.time()
+    execution_time = 0
 
     total_generations = 0
     fitness_evaluations = 0
@@ -174,12 +175,12 @@ def obtain_colours(matrix, population_size = 300, prob_mutation = 0.1, max_gener
             results = get_results(results, population_dict, num_colors, total_generations, fitness_evaluations)
             print(f"Number of colors: {len(np.unique(best_palette))}, Generation: {generations}")
             num_colors -= 1
+            execution_time = time.time() - start_time
 
         else:
             break # No valid solution with fewer colors, so stop
 
-    execution_time = time.time() - start_time
-        
+
     return best_palette, results.iloc[-1], results2, execution_time
 
 
